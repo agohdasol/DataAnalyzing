@@ -29,7 +29,8 @@ namespace DataAnalyzingBase
             string url = "https://kto.visitkorea.or.kr/kor/notice/data/statis/tstat/profit/notice/inout/popup.kto";
 
             var options = new ChromeOptions();
-            using(var driver=new ChromeDriver(driverService, options))
+            string convertedMonth;
+            using (var driver=new ChromeDriver(driverService, options))
             {
                 driver.Navigate().GoToUrl(url);
                 var dropboxCategory = driver.FindElementByXPath("//*[@id=\"gubun_2\"]");
@@ -41,15 +42,20 @@ namespace DataAnalyzingBase
                 dropboxCategory.SendKeys("목적별/국적별");
                 for(int year = 2010; year < 2021; year++)
                 {
+                    dropboxYear = driver.FindElementByXPath("//*[@id=\"yyyy\"]");
                     dropboxYear.SendKeys(year.ToString());
                     for(int month = 1; month < 13; month++)
                     {
-                        dropboxMonth.SendKeys(month.ToString());
+                        dropboxMonth = driver.FindElementByXPath("//*[@id=\"mm\"]");
+                        if (month < 10)
+                            convertedMonth = "0" + month.ToString();
+                        else
+                            convertedMonth = month.ToString();
+                        dropboxMonth.SendKeys(convertedMonth);
+                        buttonSearch = driver.FindElementByXPath("//*[@id=\"popContents\"]/form[1]/fieldset/div/div[2]/a");
                         buttonSearch.Click();
-                        Thread.Sleep(500);
+                        buttonDownload = driver.FindElementByXPath("//*[@id=\"popContents\"]/div[2]/a[2]");
                         buttonDownload.Click();
-                        Thread.Sleep(500);
-
                     }
                 }
                 
