@@ -4,21 +4,8 @@ using OpenQA.Selenium;
 using OpenQA.Selenium.Chrome;
 using OpenQA.Selenium.Support.UI;
 
-namespace DataAnalyzingBase
+namespace DataCrawler
 {
-    /*
-    주소
-    https://kto.visitkorea.or.kr/kor/notice/data/statis/tstat/profit/notice/inout/popup.kto
-    분류-목적별/국적별
-    //*[@id="gubun_2"]
-    연도-2010 2020
-    //*[@id="yyyy"]
-    월-1-12
-    //*[@id="mm"]
-    다운로드버튼
-    //*[@id="popContents"]/div[2]/a[2]
-    */
-
     class Program
     {
         static void Main(string[] args)
