@@ -34,7 +34,7 @@ namespace ExcelReader
                 //return null;
             }
 
-            int workSheetsCounter = excelPackage.Workbook.Worksheets.Count;
+            int workSheetsCounter = excelPackage.Workbook.Worksheets.Count; //워크시트 인덱스와 데이터테이블 인덱스가 다른경우?
             DataTable[] dataTable = new DataTable[workSheetsCounter];
             ExcelWorksheet[] worksheets = new ExcelWorksheet[workSheetsCounter];
 
@@ -52,7 +52,7 @@ namespace ExcelReader
                     continue;
                 }
             }
-
+            //데이터테이블 초기화할것
             //check if the worksheet is completely empty
             if ((is0BaseWorkSheets? worksheets[0].Dimension : worksheets[1].Dimension) == null)
             {
