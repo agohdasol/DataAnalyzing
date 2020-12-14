@@ -59,14 +59,15 @@ namespace ExcelReader
                 //needed to keep track of empty column headers
                 int currentColumn = 1;
                 //loop all columns in the sheet and add them to the datatable
-                foreach (var cell in worksheets[i].Cells[1, 1, 1, worksheets[i].Dimension.End.Column])  //칼럼명이 없는경우, foreach문이 돌지 않음
+                //헤더가 1행이 아닌경우 대응할것 - 미리 헤더 이외의 행 삭제해서 인풋하도록
+                for (int j = 1; j <= worksheets[i].Dimension.End.Column; j++)
                 {
-                    string columnName = cell.Text.Trim();   
+                    string columnName = worksheets[i].Cells[1, j].Text.Trim();
                     if (columnName == null || columnName == "")
                         columnName = "Empty";
 
                     //check if the previous header was empty and add it if it was
-                    if (cell.Start.Column != currentColumn)
+                    if (worksheets[i].Cells[1, j].Start.Column != currentColumn)
                     {
                         columnNames.Add("Header_" + currentColumn);
                         dataTable[i].Columns.Add("Header_" + currentColumn);
@@ -89,11 +90,11 @@ namespace ExcelReader
 
                     currentColumn++;
                 }
-
+                
                 //start adding the contents of the excel file to the datatable
-                for (int j = 2; j <= worksheets[i].Dimension.End.Row; j++)
+                for (int k = 2; k <= worksheets[i].Dimension.End.Row; k++)
                 {
-                    var row = worksheets[i].Cells[j, 1, j, worksheets[i].Dimension.End.Column];
+                    var row = worksheets[i].Cells[k, 1, k, worksheets[i].Dimension.End.Column];
                     DataRow newRow = dataTable[i].NewRow();
 
                     //loop all cells in the row
