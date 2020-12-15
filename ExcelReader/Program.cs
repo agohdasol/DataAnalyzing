@@ -26,7 +26,7 @@ namespace ExcelReader
             ExcelPackage excelPackage = new ExcelPackage(fileInfo);
             return excelPackage;
         }
-        public static DataTable[] ExcelToDataTable(ExcelPackage excelPackage)
+        public static DataTable ExcelToDataTable(ExcelPackage excelPackage, int sheetIndex = 0, int headerIndex = 1, int skipFooter = 0)
         {
             if (excelPackage == null)
             {
@@ -35,109 +35,99 @@ namespace ExcelReader
                 //return null;
             }
 
-            int workSheetsCounter = excelPackage.Workbook.Worksheets.Count;
-            DataTable[] dataTable = new DataTable[workSheetsCounter];
-            ExcelWorksheet[] worksheets = new ExcelWorksheet[workSheetsCounter];
-
-            for (int i = 0; i < workSheetsCounter; i++)
-            {
-                worksheets[i] = excelPackage.Workbook.Worksheets[i];
-                dataTable[i] = new DataTable();
-            }
+            //int workSheetsCounter = excelPackage.Workbook.Worksheets.Count;
+            DataTable dataTable = new DataTable();
+            ExcelWorksheet worksheet = excelPackage.Workbook.Worksheets[sheetIndex];
+            dataTable = new DataTable();
 
             //check if the worksheet is completely empty
-            if (worksheets[0].Dimension == null)
+            if (worksheet.Dimension == null)
             {
                 return dataTable;
             }
-            
-            for (int i = 0; i < workSheetsCounter; i++)
+
+            //create a list to hold the column names
+            List<string> columnNames = new List<string>();
+
+            //needed to keep track of empty column headers
+            int currentColumn = 1;
+            //loop all columns in the sheet and add them to the datatable
+            if (headerIndex > worksheet.Dimension.End.Column)
+                throw new Exception("The input header is out of index.");
+            for (int j = headerIndex; j <= worksheet.Dimension.End.Column; j++)
             {
-                //create a list to hold the column names
-                List<string> columnNames = new List<string>();
+                string columnName = worksheet.Cells[1, j].Text.Trim();
+                if (columnName == null || columnName == "")
+                    columnName = "Empty";
 
-                //needed to keep track of empty column headers
-                int currentColumn = 1;
-                //loop all columns in the sheet and add them to the datatable
-                //헤더가 1행이 아닌경우 대응할것 - 미리 헤더 이외의 행 삭제해서 인풋하도록
-                for (int j = 1; j <= worksheets[i].Dimension.End.Column; j++)
+                //check if the previous header was empty and add it if it was
+                if (worksheet.Cells[1, j].Start.Column != currentColumn)
                 {
-                    string columnName = worksheets[i].Cells[1, j].Text.Trim();
-                    if (columnName == null || columnName == "")
-                        columnName = "Empty";
-
-                    //check if the previous header was empty and add it if it was
-                    if (worksheets[i].Cells[1, j].Start.Column != currentColumn)
-                    {
-                        columnNames.Add("Header_" + currentColumn);
-                        dataTable[i].Columns.Add("Header_" + currentColumn);
-                        currentColumn++;
-                    }
-
-                    //add the column name to the list to count the duplicates
-                    columnNames.Add(columnName);
-
-                    //count the duplicate column names and make them unique to avoid the exception
-                    //A column named 'Name' already belongs to this DataTable
-                    int occurrences = columnNames.Count(x => x.Equals(columnName));
-                    if (occurrences > 1)
-                    {
-                        columnName = columnName + "_" + occurrences;
-                    }
-
-                    //add the column to the datatable
-                    dataTable[i].Columns.Add(columnName);
-
+                    columnNames.Add("Header_" + currentColumn);
+                    dataTable.Columns.Add("Header_" + currentColumn);
                     currentColumn++;
                 }
-                
-                //start adding the contents of the excel file to the datatable
-                for (int k = 2; k <= worksheets[i].Dimension.End.Row; k++)
+
+                //add the column name to the list to count the duplicates
+                columnNames.Add(columnName);
+
+                //count the duplicate column names and make them unique to avoid the exception
+                //A column named 'Name' already belongs to this DataTable
+                int occurrences = columnNames.Count(x => x.Equals(columnName));
+                if (occurrences > 1)
                 {
-                    var row = worksheets[i].Cells[k, 1, k, worksheets[i].Dimension.End.Column];
-                    DataRow newRow = dataTable[i].NewRow();
-
-                    //loop all cells in the row
-                    foreach (var cell in row)
-                    {
-                        newRow[cell.Start.Column - 1] = cell.Text;
-                    }
-
-                    dataTable[i].Rows.Add(newRow);
+                    columnName = columnName + "_" + occurrences;
                 }
+
+                //add the column to the datatable
+                dataTable.Columns.Add(columnName);
+
+                currentColumn++;
+            }
+
+            //start adding the contents of the excel file to the datatable
+            for (int k = 2; k <= worksheet.Dimension.End.Row - skipFooter; k++)
+            {
+                var row = worksheet.Cells[k, 1, k, worksheet.Dimension.End.Column];
+                DataRow newRow = dataTable.NewRow();
+
+                //loop all cells in the row
+                foreach (var cell in row)
+                {
+                    newRow[cell.Start.Column - 1] = cell.Text;
+                }
+
+                dataTable.Rows.Add(newRow);
             }
             return dataTable;
         }
-        public static void ShowTable(DataTable[] dataTable)
+        public static void ShowTable(DataTable dataTable)
         {
             if (dataTable == null)
             {
                 throw new ArgumentNullException("The DataTable was not found.");
                 //return;
             }
-            for (int i = 0; i < dataTable.Length; i++)
+            foreach (DataColumn col in dataTable.Columns)
             {
-                foreach (DataColumn col in dataTable[i].Columns)
-                {
-                    Console.Write("{0,-14}", col.ColumnName);
-                }
-                Console.WriteLine();
+                Console.Write("{0,-10}", col.ColumnName);
+            }
+            Console.WriteLine();
 
-                foreach (DataRow row in dataTable[i].Rows)
+            foreach (DataRow row in dataTable.Rows)
+            {
+                foreach (DataColumn col in dataTable.Columns)
                 {
-                    foreach (DataColumn col in dataTable[i].Columns)
-                    {
-                        if (col.DataType.Equals(typeof(DateTime)))
-                            Console.Write("{0,-14:d}", row[col]);
-                        else if (col.DataType.Equals(typeof(Decimal)))
-                            Console.Write("{0,-14:C}", row[col]);
-                        else
-                            Console.Write("{0,-14}", row[col]);
-                    }
-                    Console.WriteLine();
+                    if (col.DataType.Equals(typeof(DateTime)))
+                        Console.Write("{0,-10:d}", row[col]);
+                    else if (col.DataType.Equals(typeof(Decimal)))
+                        Console.Write("{0,-10:C}", row[col]);
+                    else
+                        Console.Write("{0,-10}", row[col]);
                 }
                 Console.WriteLine();
             }
+            Console.WriteLine();
         }
     }
     class Program
@@ -146,12 +136,12 @@ namespace ExcelReader
         {
             ExcelPackage.LicenseContext = LicenseContext.NonCommercial;
 
-            string fileName = @"D:\honorscs\DataAnalyzing\ExcelReader\bin\Debug\netcoreapp3.1\a.xlsx";
+            string fileName = @"D:\honorscs\DataAnalyzing\ExcelReader\bin\Debug\netcoreapp3.1\filetest.xlsx";
             ExcelPackage excelfile = ExcelHandler.ExcelFileReader(fileName);
-            DataTable[] excelDataTable = ExcelHandler.ExcelToDataTable(excelfile);
+            DataTable excelDataTable = ExcelHandler.ExcelToDataTable(excelfile, skipFooter:3);
 
             ExcelHandler.ShowTable(excelDataTable);
-
+            
 
         }
     }
