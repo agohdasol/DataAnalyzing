@@ -53,15 +53,15 @@ namespace ExcelReader
             int currentColumn = 1;
             //loop all columns in the sheet and add them to the datatable
             if (headerIndex > worksheet.Dimension.End.Column)
-                throw new Exception("The input header is out of index.");
-            for (int j = headerIndex; j <= worksheet.Dimension.End.Column; j++)
+                throw new IndexOutOfRangeException("The input header is out of index.");
+            for (int i = headerIndex; i <= worksheet.Dimension.End.Column; i++)
             {
-                string columnName = worksheet.Cells[1, j].Text.Trim();
+                string columnName = worksheet.Cells[1, i].Text.Trim();
                 if (columnName == null || columnName == "")
                     columnName = "Empty";
 
                 //check if the previous header was empty and add it if it was
-                if (worksheet.Cells[1, j].Start.Column != currentColumn)
+                if (worksheet.Cells[1, i].Start.Column != currentColumn)
                 {
                     columnNames.Add("Header_" + currentColumn);
                     dataTable.Columns.Add("Header_" + currentColumn);
@@ -80,21 +80,32 @@ namespace ExcelReader
                 }
 
                 //add the column to the datatable
-                dataTable.Columns.Add(columnName);
+                dataTable.Columns.Add(columnName);  //헤더 다음 행에서 값 타입 추출한 뒤, 해당 타입의 열을 추가하도록구현
 
                 currentColumn++;
             }
 
             //start adding the contents of the excel file to the datatable
-            for (int k = 2; k <= worksheet.Dimension.End.Row - skipFooter; k++)
+            for (int i = headerIndex+1; i <= worksheet.Dimension.End.Row - skipFooter; i++)
             {
-                var row = worksheet.Cells[k, 1, k, worksheet.Dimension.End.Column];
+                var row = worksheet.Cells[i, 1, i, worksheet.Dimension.End.Column];
                 DataRow newRow = dataTable.NewRow();
+                int temporaryInt;
+                float temporaryFloat;
 
                 //loop all cells in the row
                 foreach (var cell in row)
                 {
-                    newRow[cell.Start.Column - 1] = cell.Text;
+                    //Todo: 값마다 타입을 확인해서 맞게 DataTable 내에 입력하는것 구현할것
+                    if (float.TryParse(cell.Value.ToString(), out temporaryFloat))
+                    {
+                        newRow[cell.Start.Column - 1] = temporaryFloat;
+                        Console.WriteLine("실수 {0} {1}", temporaryFloat, newRow[cell.Start.Column - 1].GetType());
+                    }
+                    else if (int.TryParse(cell.Value.ToString(), out temporaryInt))
+                        newRow[cell.Start.Column - 1] = temporaryInt;
+                    else
+                        newRow[cell.Start.Column - 1] = cell.Text;
                 }
 
                 dataTable.Rows.Add(newRow);
@@ -141,8 +152,15 @@ namespace ExcelReader
             DataTable excelDataTable = ExcelHandler.ExcelToDataTable(excelfile, skipFooter:3);
 
             ExcelHandler.ShowTable(excelDataTable);
-            
 
+            Console.WriteLine(excelDataTable.Rows[2]["성장률(%)"].GetType());
+
+            DataTable filtered = new DataTable();
+            filtered = excelDataTable.AsEnumerable()
+                .Where(Row => Row.Field<float>("성장률(%)") > 10.0f)
+                .CopyToDataTable();
+
+            ExcelHandler.ShowTable(excelDataTable);
         }
     }
 }
