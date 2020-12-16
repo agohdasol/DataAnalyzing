@@ -4,6 +4,7 @@ using System.Data;
 using OfficeOpenXml;
 using System.Collections.Generic;
 using System.Linq;
+using System.Collections;
 
 namespace ExcelReader
 {
@@ -54,10 +55,13 @@ namespace ExcelReader
             //needed to keep track of empty column headers
             int currentColumn = 1;
             //loop all columns in the sheet and add them to the datatable
-            if (headerIndex > worksheet.Dimension.End.Column)
+            if (headerIndex >= worksheet.Dimension.End.Row)
                 //return dataTable;
                 throw new IndexOutOfRangeException("The input header is out of index.");
-            for (int i = headerIndex; i <= worksheet.Dimension.End.Column; i++)
+
+            //Get Type of each column
+            Type[] typeArray = ColumnTypeParser(worksheet, headerIndex, skipFooter);
+            for (int i = 1; i <= worksheet.Dimension.End.Column; i++)
             {
                 string columnName = worksheet.Cells[1, i].Text.Trim();
                 if (columnName == null || columnName == "")
@@ -67,7 +71,7 @@ namespace ExcelReader
                 if (worksheet.Cells[1, i].Start.Column != currentColumn)
                 {
                     columnNames.Add("Header_" + currentColumn);
-                    dataTable.Columns.Add("Header_" + currentColumn);
+                    dataTable.Columns.Add("Header_" + currentColumn, typeArray[i - 1]);
                     currentColumn++;
                 }
 
@@ -83,7 +87,7 @@ namespace ExcelReader
                 }
 
                 //add the column to the datatable
-                dataTable.Columns.Add(columnName);  //헤더 다음 행에서 값 타입 추출한 뒤, 해당 타입의 열을 추가하도록구현
+                dataTable.Columns.Add(columnName, typeArray[i - 1]);  //헤더 다음 행에서 값 타입 추출한 뒤, 해당 타입의 열을 추가하도록구현
 
                 currentColumn++;
             }
@@ -97,17 +101,13 @@ namespace ExcelReader
                 var row = worksheet.Cells[i, 1, i, worksheet.Dimension.End.Column];
                 DataRow newRow = dataTable.NewRow();
                 int temporaryInt;
-                float temporaryFloat;
+                decimal temporaryDecimal;
 
                 //loop all cells in the row
                 foreach (var cell in row)
                 {
-                    //Todo: 값마다 타입을 확인해서 맞게 DataTable 내에 입력하는것 구현할것
-                    if (float.TryParse(cell.Value.ToString(), out temporaryFloat))
-                    {
-                        newRow[cell.Start.Column - 1] = temporaryFloat;
-                        Console.WriteLine("실수 {0} {1}", temporaryFloat, newRow[cell.Start.Column - 1].GetType());
-                    }
+                    if (decimal.TryParse(cell.Value.ToString(), out temporaryDecimal))
+                        newRow[cell.Start.Column - 1] = temporaryDecimal;
                     else if (int.TryParse(cell.Value.ToString(), out temporaryInt))
                         newRow[cell.Start.Column - 1] = temporaryInt;
                     else
@@ -117,6 +117,46 @@ namespace ExcelReader
                 dataTable.Rows.Add(newRow);
             }
             return dataTable;
+        }
+        private static Type[] ColumnTypeParser(ExcelWorksheet worksheet, int headerIndex = 1, int skipFooter = 0)
+        {
+            Type[] typeArray = new Type[worksheet.Dimension.End.Column];
+            //헤더인덱스 크기는 ExcelToDataTable메서드에서 검증하므로 별도 검증 생략
+            for (int i = headerIndex + 1; i <= worksheet.Dimension.End.Row - skipFooter; i++)
+            {
+                //TryParse out에 이용될 변수 선언
+                int temporaryInt;
+                decimal temporaryDecimal;
+                //loop all cells in the row
+                for (int j = 1; j <= worksheet.Dimension.End.Column; j++)
+                {
+                    //정수-데시멀-스트링 순으로 판단. 날짜 등은 인식X
+                    if (typeArray[j - 1] == null)
+                    {
+                        if (int.TryParse(worksheet.Cells[i, j].Value.ToString(), out temporaryInt))
+                            typeArray[j - 1] = typeof(int);
+                        else if (decimal.TryParse(worksheet.Cells[i, j].Value.ToString(), out temporaryDecimal))
+                            typeArray[j - 1] = typeof(decimal);
+                        else
+                            typeArray[j - 1] = typeof(string);
+                    }
+                    else
+                    {
+                        //기존 입력값이 인트인데 새로운 입력값이 데시멀인 경우 해당 칼럼은 데시멀
+                        if (typeArray[j - 1] == typeof(int)
+                            && !int.TryParse(worksheet.Cells[i, j].Value.ToString(), out temporaryInt) 
+                            && decimal.TryParse(worksheet.Cells[i, j].Value.ToString(), out temporaryDecimal))
+                            typeArray[j - 1] = typeof(decimal);
+                        //기존 입력값이 데시멀인데 새로운 입력값이 데시멀도 인트도 아닌경우 해당 칼럼은 스트링
+                        else if (typeArray[j - 1] == typeof(decimal)
+                            && !decimal.TryParse(worksheet.Cells[i, j].Value.ToString(), out temporaryDecimal)
+                            && !int.TryParse(worksheet.Cells[i, j].Value.ToString(), out temporaryInt))
+                            typeArray[j - 1] = typeof(string);
+                    }
+
+                }
+            }
+            return typeArray;
         }
         public static void ShowTable(DataTable dataTable)
         {
@@ -137,8 +177,8 @@ namespace ExcelReader
                 {
                     if (col.DataType.Equals(typeof(DateTime)))
                         Console.Write("{0,-10:d}", row[col]);
-                    else if (col.DataType.Equals(typeof(Decimal)))
-                        Console.Write("{0,-10:C}", row[col]);
+                    //else if (col.DataType.Equals(typeof(Decimal)))
+                    //    Console.Write("{0,-10}", row[col]);
                     else
                         Console.Write("{0,-10}", row[col]);
                 }
@@ -155,18 +195,22 @@ namespace ExcelReader
 
             string fileName = @"D:\honorscs\DataAnalyzing\ExcelReader\bin\Debug\netcoreapp3.1\filetest.xlsx";
             ExcelPackage excelfile = ExcelHandler.ExcelFileReader(fileName);
-            DataTable excelDataTable = ExcelHandler.ExcelToDataTable(excelfile, sheetIndex: 1, skipFooter: 3);
+            DataTable excelDataTable = ExcelHandler.ExcelToDataTable(excelfile, sheetIndex: 0, skipFooter: 3);
 
             ExcelHandler.ShowTable(excelDataTable);
 
             Console.WriteLine(excelDataTable.Rows[2]["성장률(%)"].GetType());
+            Console.WriteLine(excelDataTable.Rows[2]["관광"].GetType());
+            Console.WriteLine(excelDataTable.Rows[2]["성장률(%)"].ToString());
+            Console.WriteLine(excelDataTable.Rows[2]["국적"].ToString());
 
             DataTable filtered = new DataTable();
+            decimal test = 10.0m;
             filtered = excelDataTable.AsEnumerable()
-                .Where(Row => Row.Field<float>("성장률(%)") > 10.0f)
+                .Where(Row => Row.Field<decimal>("성장률(%)") > test)
                 .CopyToDataTable();
 
-            ExcelHandler.ShowTable(excelDataTable);
+            ExcelHandler.ShowTable(filtered);
         }
     }
 }
