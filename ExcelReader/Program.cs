@@ -26,19 +26,21 @@ namespace ExcelReader
             ExcelPackage excelPackage = new ExcelPackage(fileInfo);
             return excelPackage;
         }
+        //시트명으로 불러오는 메서드도 구현?
         public static DataTable ExcelToDataTable(ExcelPackage excelPackage, int sheetIndex = 0, int headerIndex = 1, int skipFooter = 0)
         {
             if (excelPackage == null)
             {
                 throw new ArgumentNullException("The ExcelPackage was not found.");
-                //Console.WriteLine("파일없음");
                 //return null;
             }
 
-            //int workSheetsCounter = excelPackage.Workbook.Worksheets.Count;
+            int workSheetsCounter = excelPackage.Workbook.Worksheets.Count;
             DataTable dataTable = new DataTable();
+            if (workSheetsCounter < sheetIndex + 1)
+                //throw new IndexOutOfRangeException("The SheetIndex is out of index.");
+                return dataTable;
             ExcelWorksheet worksheet = excelPackage.Workbook.Worksheets[sheetIndex];
-            dataTable = new DataTable();
 
             //check if the worksheet is completely empty
             if (worksheet.Dimension == null)
@@ -53,6 +55,7 @@ namespace ExcelReader
             int currentColumn = 1;
             //loop all columns in the sheet and add them to the datatable
             if (headerIndex > worksheet.Dimension.End.Column)
+                //return dataTable;
                 throw new IndexOutOfRangeException("The input header is out of index.");
             for (int i = headerIndex; i <= worksheet.Dimension.End.Column; i++)
             {
@@ -86,7 +89,10 @@ namespace ExcelReader
             }
 
             //start adding the contents of the excel file to the datatable
-            for (int i = headerIndex+1; i <= worksheet.Dimension.End.Row - skipFooter; i++)
+            if (headerIndex + 1 > worksheet.Dimension.End.Row - skipFooter)
+                //return dataTable;
+                throw new IndexOutOfRangeException("The SkipFooter is out of index.");
+            for (int i = headerIndex + 1; i <= worksheet.Dimension.End.Row - skipFooter; i++)
             {
                 var row = worksheet.Cells[i, 1, i, worksheet.Dimension.End.Column];
                 DataRow newRow = dataTable.NewRow();
@@ -149,7 +155,7 @@ namespace ExcelReader
 
             string fileName = @"D:\honorscs\DataAnalyzing\ExcelReader\bin\Debug\netcoreapp3.1\filetest.xlsx";
             ExcelPackage excelfile = ExcelHandler.ExcelFileReader(fileName);
-            DataTable excelDataTable = ExcelHandler.ExcelToDataTable(excelfile, skipFooter:3);
+            DataTable excelDataTable = ExcelHandler.ExcelToDataTable(excelfile, sheetIndex: 1, skipFooter: 3);
 
             ExcelHandler.ShowTable(excelDataTable);
 
