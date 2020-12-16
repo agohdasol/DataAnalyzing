@@ -100,15 +100,13 @@ namespace ExcelReader
             {
                 var row = worksheet.Cells[i, 1, i, worksheet.Dimension.End.Column];
                 DataRow newRow = dataTable.NewRow();
-                int temporaryInt;
-                decimal temporaryDecimal;
 
                 //loop all cells in the row
                 foreach (var cell in row)
                 {
-                    if (decimal.TryParse(cell.Value.ToString(), out temporaryDecimal))
+                    if (decimal.TryParse(cell.Value.ToString(), out decimal temporaryDecimal))
                         newRow[cell.Start.Column - 1] = temporaryDecimal;
-                    else if (int.TryParse(cell.Value.ToString(), out temporaryInt))
+                    else if (int.TryParse(cell.Value.ToString(), out int temporaryInt))
                         newRow[cell.Start.Column - 1] = temporaryInt;
                     else
                         newRow[cell.Start.Column - 1] = cell.Text;
@@ -125,17 +123,19 @@ namespace ExcelReader
             for (int i = headerIndex + 1; i <= worksheet.Dimension.End.Row - skipFooter; i++)
             {
                 //TryParse out에 이용될 변수 선언
-                int temporaryInt;
-                decimal temporaryDecimal;
+                //int temporaryInt;
+                //decimal temporaryDecimal;
                 //loop all cells in the row
                 for (int j = 1; j <= worksheet.Dimension.End.Column; j++)
                 {
                     //정수-데시멀-스트링 순으로 판단. 날짜 등은 인식X
                     if (typeArray[j - 1] == null)
                     {
-                        if (int.TryParse(worksheet.Cells[i, j].Value.ToString(), out temporaryInt))
+                        if (int.TryParse(worksheet.Cells[i, j].Value.ToString(), out int _))
+                        {
                             typeArray[j - 1] = typeof(int);
-                        else if (decimal.TryParse(worksheet.Cells[i, j].Value.ToString(), out temporaryDecimal))
+                        }
+                        else if (decimal.TryParse(worksheet.Cells[i, j].Value.ToString(), out decimal _))
                             typeArray[j - 1] = typeof(decimal);
                         else
                             typeArray[j - 1] = typeof(string);
@@ -144,13 +144,13 @@ namespace ExcelReader
                     {
                         //기존 입력값이 인트인데 새로운 입력값이 데시멀인 경우 해당 칼럼은 데시멀
                         if (typeArray[j - 1] == typeof(int)
-                            && !int.TryParse(worksheet.Cells[i, j].Value.ToString(), out temporaryInt) 
-                            && decimal.TryParse(worksheet.Cells[i, j].Value.ToString(), out temporaryDecimal))
+                            && !int.TryParse(worksheet.Cells[i, j].Value.ToString(), out int _) 
+                            && decimal.TryParse(worksheet.Cells[i, j].Value.ToString(), out decimal _))
                             typeArray[j - 1] = typeof(decimal);
                         //기존 입력값이 데시멀인데 새로운 입력값이 데시멀도 인트도 아닌경우 해당 칼럼은 스트링
                         else if (typeArray[j - 1] == typeof(decimal)
-                            && !decimal.TryParse(worksheet.Cells[i, j].Value.ToString(), out temporaryDecimal)
-                            && !int.TryParse(worksheet.Cells[i, j].Value.ToString(), out temporaryInt))
+                            && !decimal.TryParse(worksheet.Cells[i, j].Value.ToString(), out _)
+                            && !int.TryParse(worksheet.Cells[i, j].Value.ToString(), out _))
                             typeArray[j - 1] = typeof(string);
                     }
 
