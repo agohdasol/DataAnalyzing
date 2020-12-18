@@ -5,6 +5,7 @@ using OfficeOpenXml;
 using System.Collections.Generic;
 using System.Linq;
 using System.Collections;
+using System.Text.RegularExpressions;
 
 namespace ExcelReader
 {
@@ -27,8 +28,8 @@ namespace ExcelReader
             ExcelPackage excelPackage = new ExcelPackage(fileInfo);
             return excelPackage;
         }
-        //시트명으로 불러오는 메서드도 구현?
-        public static DataTable ExcelToDataTable(ExcelPackage excelPackage, int sheetIndex = 0, int headerIndex = 1, int skipFooter = 0)
+        //시트명으로 불러오는 메서드도 구현?-시트명 입력받고 시트명 찾아서 인덱스 반환->메소드 오버로드
+        public static DataTable ExcelToDataTable(ExcelPackage excelPackage, int sheetIndex = 0, int headerIndex = 1, int skipFooter = 4)
         {
             if (excelPackage == null)
             {
@@ -87,7 +88,7 @@ namespace ExcelReader
                 }
 
                 //add the column to the datatable
-                dataTable.Columns.Add(columnName, typeArray[i - 1]);  //헤더 다음 행에서 값 타입 추출한 뒤, 해당 타입의 열을 추가하도록구현
+                dataTable.Columns.Add(columnName, typeArray[i - 1]);
 
                 currentColumn++;
             }
@@ -144,7 +145,7 @@ namespace ExcelReader
                     {
                         //기존 입력값이 인트인데 새로운 입력값이 데시멀인 경우 해당 칼럼은 데시멀
                         if (typeArray[j - 1] == typeof(int)
-                            && !int.TryParse(worksheet.Cells[i, j].Value.ToString(), out int _) 
+                            && !int.TryParse(worksheet.Cells[i, j].Value.ToString(), out int _)
                             && decimal.TryParse(worksheet.Cells[i, j].Value.ToString(), out decimal _))
                             typeArray[j - 1] = typeof(decimal);
                         //기존 입력값이 데시멀인데 새로운 입력값이 데시멀도 인트도 아닌경우 해당 칼럼은 스트링
@@ -186,6 +187,30 @@ namespace ExcelReader
             }
             Console.WriteLine();
         }
+        public static string ReadYearMonthFromHeader(ExcelPackage excelPackage) //챕터 4 전용
+        {
+            if (excelPackage == null)
+            {
+                throw new ArgumentNullException("The ExcelPackage was not found.");
+                //return null;
+            }
+
+            ExcelWorksheet worksheet = excelPackage.Workbook.Worksheets[0];
+
+            //check if the worksheet is completely empty
+            if (worksheet.Dimension == null)
+            {
+                throw new ArgumentNullException("The Worksheet 0 is empty.");
+            }
+
+            string columnName = worksheet.Cells[1, 1].Text.Trim();
+            //2019년 04월 외래객 입국-목적별/국적별
+            Regex regex = new Regex(@"[0-9]{4}년 [0-9]{2}월 외래객 입국-목적별/국적별");
+            if (regex.IsMatch(columnName))
+                return columnName;
+            else
+                return "아닌데여";
+        }
     }
     class Program
     {
@@ -195,7 +220,7 @@ namespace ExcelReader
 
             string fileName = @"D:\honorscs\DataAnalyzing\ExcelReader\bin\Debug\netcoreapp3.1\filetest.xlsx";
             ExcelPackage excelfile = ExcelHandler.ExcelFileReader(fileName);
-            DataTable excelDataTable = ExcelHandler.ExcelToDataTable(excelfile, sheetIndex: 0, skipFooter: 3);
+            DataTable excelDataTable = ExcelHandler.ExcelToDataTable(excelfile, headerIndex: 1, skipFooter: 4);
 
             ExcelHandler.ShowTable(excelDataTable);
 
@@ -211,6 +236,12 @@ namespace ExcelReader
                 .CopyToDataTable();
 
             ExcelHandler.ShowTable(filtered);
+
+            string fileName2 = @"D:\honorscs\DataAnalyzing\ExcelReader\bin\Debug\netcoreapp3.1\test22.xlsx";
+            ExcelPackage excelfile2 = ExcelHandler.ExcelFileReader(fileName2);
+            Console.WriteLine(ExcelHandler.ReadYearMonthFromHeader(excelfile2));
+            //1행 읽어서 기준연월 체크하는 메서드 작성할것
+            //여러파일읽어서 합치는메서드
         }
     }
 }
