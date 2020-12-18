@@ -205,11 +205,13 @@ namespace ExcelReader
 
             string columnName = worksheet.Cells[1, 1].Text.Trim();
             //2019년 04월 외래객 입국-목적별/국적별
-            Regex regex = new Regex(@"[0-9]{4}년 [0-9]{2}월 외래객 입국-목적별/국적별");
+            Regex regex = new Regex(@"(?<Year>\d+)년 (?<Month>\d+)월 외래객 입국-목적별/국적별");
+
             if (regex.IsMatch(columnName))
-                return columnName;
+                return regex.Match(columnName).Groups["Year"].Value.ToString() + "-"
+                    + regex.Match(columnName).Groups["Month"].Value.ToString();
             else
-                return "아닌데여";
+                return "";
         }
     }
     class Program
